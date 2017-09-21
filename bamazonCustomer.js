@@ -26,7 +26,7 @@ connection.connect(function(err) {
 function itemForSale() {
   connection.query("SELECT * FROM products", function(err, res) {
 
-  	 console.log('Product Name  |  Department Name  |   Price  | In Stock');
+  	 console.log("Product Name  |  Department Name  |   Price  | In Stock");
      console.log("---------------------------------")
 
     for (var i = 0; i < res.length; i++) {
@@ -54,7 +54,7 @@ function customerSelection() {
             }
             return choiceArray;
           },
-          message: "What items would you like to purchase?"
+          message: "What item(s) would you like to purchase?"
         },
         {
           name: "purchase",
@@ -70,14 +70,14 @@ function customerSelection() {
             chosenItem = results[i];
           }
         }
-        // determine if bid was high enough
-        if (chosenItem.highest_bid < parseInt(answer.bid)) {
-          // bid was high enough, so update db, let the user know, and start over
+        // determine if there is enough supply to fill customer order
+        if (chosenItem.stock_quantity >= parseInt(answer.choice)) {
+          // purchase was successful, so update db, let the user know, and start over
           connection.query(
             "UPDATE auctions SET ? WHERE ?",
             [
               {
-                highest_bid: answer.bid
+                stock_quantity: answer.choice
               },
               {
                 id: chosenItem.id
@@ -85,16 +85,31 @@ function customerSelection() {
             ],
             function(error) {
               if (error) throw err;
-              console.log("Bid placed successfully!");
-              start();
+              console.log("Purchase successful!");
+              
             }
           );
         }
         else {
-          // bid wasn't high enough, so apologize and start over
-          console.log("Your bid was too low. Try again...");
-          start();
+          // purchase amount too high, so apologize and start over
+          console.log("Insufficient Supply!");
+          
         }
-      });
-  });
+        // Update mySQL database with reduced inventory
+            var newInventory = parseInt(stock_quantity) - parseInt(answer.choice); 
+            connection.query('UPDATE Products SET ? WHERE ?', [{stock_quantity: newInventory}], function(err, res){
+              if(err) throw err; // Error Handler
+            }); 
+
+             // Show customer their purchase total (need to query the price info from database)
+            var customerTotal;
+            connection.query('SELECT Price FROM Products WHERE ?', function(err, res){
+              
+              var price = res[0].price;
+              customerTotal = stock_quantity*price.toFixed(2);
+
+              console.log('\nYour total is $' + customerTotal + '.');
+      		});
+  		});
+	}
 }
